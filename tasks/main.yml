@@ -1,0 +1,36 @@
+---
+- name: Check whether {{ ssh_user }} has ssh key
+  stat:
+    path: "{{ root_keyfile }}"
+  register: key
+  become: true
+
+- name: Create ecdsa ssh-key for {{ ssh_user }}
+  command: ssh-keygen -t ecdsa -N '' -f {{ root_keyfile }}
+  when: key.stat.exists == False
+  become: true
+
+- name: Downloading user key
+  become: true
+  fetch:
+    src: "{{ root_keyfile }}.pub"
+    dest: "{{ tmp_keyfile }}"
+    flat: yes
+
+- name: Downloading host key
+  become: true
+  fetch:
+    src: "{{ host_keyfile }}"
+    dest: "{{ tmp_host_keyfile }}"
+    flat: yes
+
+- name: Distribute key to targets
+  include_tasks: pushkey.yml target={{ item }} become=true become_user={{ ssh_user }}
+  with_items: "{{ ssh_targets }}"
+
+- name: Rehash hostnames
+  command: ssh-keygen -H
+
+- name: Deleting temporal key
+  local_action: file path={{ tmp_keyfile }} state=absent
+  ignore_errors: true
