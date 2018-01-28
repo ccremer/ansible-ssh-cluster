@@ -30,6 +30,7 @@
 
 - name: Rehash hostnames
   command: ssh-keygen -H
+  when: ssh_known_hosts_rehash
 
 - name: Deleting temporal key
   local_action: file path={{ tmp_keyfile }} state=absent
